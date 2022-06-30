@@ -18,21 +18,33 @@ def regression_evaluation(model_name, y_test, y_test_pred, y_train=None, y_train
     print('----------------------------------------',model_name,'----------------------------------------')
     if y_train is not None and y_train_pred is not None:
         print('-----Train Set Metrics-----')
-        print('R-squared                         : ', r2_score(y_train, y_train_pred))
-        print('Root Mean Squared Error                : ', np.sqrt(mean_squared_error(y_train, y_train_pred)))
-        print('Explained Variance Score          : ', explained_variance_score(y_train, y_train_pred))
-        print('Mean Absolute Error               : ', mean_absolute_error(y_train, y_train_pred))
-        print('Mean Squared Error                : ', mean_squared_error(y_train, y_train_pred))
-        print('Mean Absolute Percentage Error    : ', mean_absolute_percentage_error(y_train, y_train_pred))
-        print('Mean Squared Logarithmic Error    : ', mean_squared_log_error(y_train, y_train_pred), '\n')
+        r2 = r2_score(y_train, y_train_pred)
+        rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+        evs = explained_variance_score(y_train, y_train_pred)
+        mae = mean_absolute_error(y_train, y_train_pred)
+        mse = mean_squared_error(y_train, y_train_pred)
+        mape = mean_absolute_percentage_error(y_train, y_train_pred)
+
+        print('R-squared                         : ', r2)
+        print('Root Mean Squared Error           : ', rmse)
+        print('Explained Variance Score          : ', evs)
+        print('Mean Absolute Error               : ', mae)
+        print('Mean Squared Error                : ', mse)
+        print('Mean Absolute Percentage Error    : ', mape)
+        if min(y_train)>=0 and min(y_train_pred)>=0:
+            msle = mean_squared_log_error(y_train, y_train_pred)
+            print('Mean Squared Logarithmic Error    : ', msle, '\n')
+        else:
+            msle = None
 
         score_df = pd.DataFrame({
-            'train_R2': r2_score(y_train, y_train_pred),
-            'train_EVS': explained_variance_score(y_train, y_train_pred),
-            'train_MAE': mean_absolute_error(y_train, y_train_pred),
-            'train_MSE': mean_squared_error(y_train, y_train_pred),
-            'train_MAPE': mean_absolute_percentage_error(y_train, y_train_pred),
-            'train_MSLE': mean_squared_log_error(y_train, y_train_pred)
+            'train_R2': r2,
+            'train_RMSE': rmse,
+            'train_EVS': evs,
+            'train_MAE': mae,
+            'train_MSE': mse,
+            'train_MAPE': mape,
+            'train_MSLE': msle
         }, index=[model_name])
 
         print('-----Train Set Plots-----')
@@ -46,7 +58,7 @@ def regression_evaluation(model_name, y_test, y_test_pred, y_train=None, y_train
         plt.subplot(1, 2, 2)
         plt.scatter(y_train, y_train_pred)
         plt.plot([y_train.min(), y_train.max()], [y_train.min(), y_train.max()], 'r--')
-        plt.title('Test vs Prediction')
+        plt.title('Train vs Prediction')
         plt.xlabel('y_test')
         plt.ylabel('y_pred')
         plt.show()
@@ -55,29 +67,37 @@ def regression_evaluation(model_name, y_test, y_test_pred, y_train=None, y_train
 
     # R-squared
     r2 = r2_score(y_test, y_test_pred)
-    print('R-squared                            : ', r2)
+    print('R-squared                         : ', r2)
+
+    #RMSE
+    rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+    print('Root Mean Squared Error           : ', np.sqrt(mean_squared_error(y_train, y_train_pred)))
 
     # Explained Variance Score
     evs = explained_variance_score(y_test, y_test_pred)
-    print('Explained Variance Score             : ', evs)
+    print('Explained Variance Score          : ', evs)
 
     # Mean Absolute Error
     mae = mean_absolute_error(y_test, y_test_pred)
-    print('Mean Absolute Error                  : ', mae)
+    print('Mean Absolute Error               : ', mae)
 
     # Mean Squared Error
     mse = mean_squared_error(y_test, y_test_pred)
-    print('Mean Squared Error                   : ', mse)
+    print('Mean Squared Error                : ', mse)
 
     # Mean Absolute Percentage Error
     mape = mean_absolute_percentage_error(y_test, y_test_pred)
-    print('Mean Absolute Percentage Error       : ', mape)
+    print('Mean Absolute Percentage Error    : ', mape)
 
     # Mean Squared Logarithmic Error
-    msle = mean_squared_log_error(y_test, y_test_pred)
-    print('Mean Squared Logarithmic Error       : ', msle, '\n')
+    if min(y_test) >= 0 and min(y_test_pred) >= 0:
+        msle = mean_squared_log_error(y_test, y_test_pred)
+        print('Mean Squared Logarithmic Error    : ', msle, '\n')
+    else:
+        msle = None
 
     score_df['test_R2'] = r2
+    score_df['test_RMSE'] = rmse
     score_df['test_EVS'] = evs
     score_df['test_MAE'] = mae
     score_df['test_MSE'] = mse
