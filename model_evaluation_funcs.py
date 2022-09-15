@@ -3,13 +3,20 @@ import numpy as np
 
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import permutation_test_score
+from sklearn.model_selection import train_test_split
 from sklearn.dummy import DummyRegressor
 
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error, \
     explained_variance_score, mean_absolute_percentage_error, mean_squared_log_error
+from sklearn.metrics import roc_curve, auc, roc_auc_score, DetCurveDisplay, RocCurveDisplay, \
+    balanced_accuracy_score, cohen_kappa_score, confusion_matrix, classification_report, log_loss, \
+    matthews_corrcoef, accuracy_score, f1_score, hamming_loss, precision_score, recall_score
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+# TODO: draw DecisionBoundaryDisplay
+#   https://scikit-learn.org/stable/modules/generated/sklearn.inspection.DecisionBoundaryDisplay.html#sklearn.inspection.DecisionBoundaryDisplay.from_estimator
 
 def regression_evaluation(model_name, y_test, y_test_pred, y_train=None, y_train_pred=None):
 
@@ -212,3 +219,141 @@ def cross_validation(model, X_train, y_train, cv=5, scoring=None, n_permutations
 
     # TODO : add nested CV option
     #   https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html#sphx-glr-auto-examples-model-selection-plot-nested-cross-validation-iris-py
+
+def classification_roc_auc(y_test, y_score):
+    """
+    Draws ROC Curve of a single or multiple model results of binary classification.
+
+    :param y_test: ture labels
+    :type y_test: np.array or pd.Series
+_
+    :param y_score: dictionary containing the name of the model as key and predictions
+    (probabilities or decision function) as value.
+    :type y_score: dict
+
+    Returns: None
+
+    """
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+
+    plt.figure()
+
+    for i,key in enumerate(list(y_score.keys())):
+        fpr[key], tpr[key], _ = roc_curve(y_test, y_score[key])
+        roc_auc[key] = roc_auc_score(y_test, y_score[key])
+
+        plt.plot(fpr[key], tpr[key],
+                 label='{}: {:.4f}'.format(key, roc_auc[key]))
+
+    plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--")
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("Receiver Operating Characteristic ")
+    plt.legend(loc="lower right")
+    plt.show()
+
+def classification_roc_det_curves(classifiers, X, y) -> None:
+    """
+    Draws Receiver Operation Characteristic and Detection Error Tradeoff Curves using make_classification
+
+    Args:
+        classifiers (dict): Dictionary with name as key and classifier object as value
+        X (object): make_classification return object
+        y (object): make_classification return object
+    """
+    #N_SAMPLES = 1000
+    #classifiers = {
+    #    "Linear SVM": make_pipeline(StandardScaler(), LinearSVC(C=0.025)),
+    #    "Random Forest": RandomForestClassifier(
+    #        max_depth=5, n_estimators=10, max_features=1
+    #    ),
+    #}
+    #X, y = make_classification(
+    #    n_samples=N_SAMPLES,
+    #    n_features=2,
+    #    n_redundant=0,
+    #    n_informative=2,
+    #    random_state=1,
+    #    n_clusters_per_class=1,
+    #)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=0)
+
+    # prepare plots
+    fig, [ax_roc, ax_det] = plt.subplots(1, 2, figsize=(11, 5))
+
+    for name, clf in classifiers.items():
+        clf.fit(X_train, y_train)
+
+        RocCurveDisplay.from_estimator(clf, X_test, y_test, ax=ax_roc, name=name)
+        DetCurveDisplay.from_estimator(clf, X_test, y_test, ax=ax_det, name=name)
+
+    ax_roc.set_title("Receiver Operating Characteristic (ROC) curves")
+    ax_det.set_title("Detection Error Tradeoff (DET) curves")
+
+    ax_roc.grid(linestyle="--")
+    ax_det.grid(linestyle="--")
+
+    plt.legend()
+    plt.show()
+
+def classification_evaluation(model_name,y_true, y_pred, sample_weight=None):
+    '''
+    precision: tp / (tp + fp)  ability of the classifier not to label a negative sample as positive.
+    recall: tp / (tp + fn) ability of the classifier to find all the positive samples.
+    balanced accuracy score: [0,1] average of recall obtained on each class; best value is 1 and the worst value is 0
+    accuracy score: [0,1] fraction of correct predictions.
+    cohen-kappa: [-1,1] the level of agreement between two annotators; 1 means complete agreement and zero or lower means chance agreement
+    MCC: [-1,1] takes into account true and false positives and negatives and is a balanced measure for imbalance cases. The MCC is in essence a correlation coefficient value.
+    F1 Score: [-1,1] harmonic mean of the precision and recall.
+    Hamming Loss: [0,1] fraction of labels that are incorrectly predicted.
+
+    Args:
+        model_name (str): name of the model
+        y_true (np.array or pd.Series): true labels
+        y_pred (np.array or pd.Series): predicted labels
+        sample_weight (np.array): sample weights
+
+    Returns:
+        evaluation_dict (dict): dict of dict with model name as key and a dict of model scores as value.
+
+    '''
+    # TODO: add precision recall curve
+    #   https://scikit-learn.org/stable/auto_examples/model_selection/plot_precision_recall.html#plot-precision-recall-curve-for-each-class-and-iso-f1-curves
+    # TODO: add average precision recall and maybe draw the curve
+
+    print(f'------------------------------------------{model_name}------------------------------------------')
+
+    print('Confusion Matrix: ')
+    print(confusion_matrix(y_true, y_pred, sample_weight=sample_weight))
+    print('\n\nClassification Report: ')
+    print(classification_report(y_true, y_pred, sample_weight=sample_weight))
+    print('\n\nBalanced Accuracy Score: ', balanced_accuracy_score(y_true, y_pred, sample_weight=sample_weight))
+    print('Accuracy Score: ', accuracy_score(y_true, y_pred, sample_weight=sample_weight))
+    print('Cohen-Kappa Score: ', cohen_kappa_score(y_true, y_pred, sample_weight=sample_weight))
+    #print('Log Loss: ', log_loss(y_true, y_score, sample_weight=sample_weight))
+    print('Matthews Correlation Coefficient: ', matthews_corrcoef(y_true, y_pred, sample_weight=sample_weight))
+    print('F1 Score: ', f1_score(y_true, y_pred, sample_weight=sample_weight, average='weighted'))
+    print('Hamming Loss: ', hamming_loss(y_true, y_pred, sample_weight=sample_weight))
+
+    evaluation_dict = {
+        model_name: {
+        'Balanced Accuracy Score': balanced_accuracy_score(y_true, y_pred, sample_weight=sample_weight),
+        'Accuracy Score': accuracy_score(y_true, y_pred, sample_weight=sample_weight),
+        'Cohen Kappa Score': cohen_kappa_score(y_true, y_pred, sample_weight=sample_weight),
+        'Matthews Corrcoef': matthews_corrcoef(y_true, y_pred, sample_weight=sample_weight),
+        'F1 Score': f1_score(y_true, y_pred, sample_weight=sample_weight, average='weighted'),
+        'Hamming Loss': hamming_loss(y_true, y_pred, sample_weight=sample_weight),
+        'Precision': precision_score(y_true, y_pred, sample_weight=sample_weight),
+        'Recall': recall_score(y_true, y_pred, sample_weight=sample_weight)
+        }
+    }
+
+    return evaluation_dict
+
+
+
